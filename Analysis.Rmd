@@ -59,8 +59,11 @@ feature_index <- feature_index[-c(1:7)]
 
 ## Cross validation split
 
+To find an optimal model, with the best performance both in Accuracy as well as minimizing Out of Sample Error, the full testing data is split randomly with a set seed with 80% of the data into the training sample and 20% of the data used as cross-validation. When the samples are created, they are sliced by column against the feature set so only the variables of interest are fed into the final model.
+
+For model validation, to measure up accuracy as well as keeping "Out of Sample Error" low, training data itself is split into a training and validation part. This separation is done with a fixed seed and 80% of the data for training and 20% for validation. The splitting is done per partition of the attribute "classe" to ensure availability of every all values in the training set.
 ```{r}
-set.seed(1300)
+set.seed(666)
 index_train <- createDataPartition(y=pml_train$classe, p=0.80, list=FALSE)
 data_train <- pml_train[index_train,feature_index]
 data_xval <- pml_train[-index_train,feature_index]
@@ -68,7 +71,7 @@ data_xval <- pml_train[-index_train,feature_index]
 
 ## MOdel training and cross validation
 
-```{r}
+```{r,warning=FALSE, results='hide'}
 model<- train(classe ~ .,
                 data = data_train, 
                 method = 'rf', 
@@ -86,6 +89,18 @@ cm_rf <- confusionMatrix(pred,data_xval$classe)
 print(plot(varImp(model, scale = FALSE)))
 ```
 
+```{r}
+cm_rf
+```
+
+## Prediction 
+
+```{r}
+final_col <- length(colnames(pml_test[]))
+colnames(pml_test)[final_col] <- 'classe'
+submission <- predict(model,pml_test[,feature_index])
+submission
+```
 
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
