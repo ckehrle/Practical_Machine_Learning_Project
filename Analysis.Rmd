@@ -9,9 +9,15 @@ output: html_document
 
 Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
 
+# Obejective
+The objective of this analysis is to correctly predict the attribute "classe" for the entries in the test set.
+
+
 # Processig and Exploratory Data Analysis
 
 ## Data Load
+
+Both datasets are downloaded in separate files. When importing into dataframe we cleanse the sets for NULL values like empty fields,'NA' or '#DIV/0!' otherwise the import will face issues on detecting numeric attributes.
 
 ```{r, warning=FALSE}
 library(caret, quietly=TRUE)
@@ -23,33 +29,17 @@ pml_train <- read.csv(file = 'train.csv',na.strings = c('','NA','#DIV/0!'))
 pml_test <- read.csv(file = 'test.csv',na.strings  = c('','NA','#DIV/0!'))
 ```
 
-## Explorytory Data Analysis
+## Exploratory Data Analysis
 
-### Training Data 
+After some basic data analysis with R-functions "summary" and "str" ( We omit the output here since it just would disrupt the readability of the document.) we found out that the first 7 colummns are of dimensional character so, so we likely omit them later in feature engineering for model buuilding.
 
-First Lines of training data set
-```{r, eval=FALSE}
-head(pml_train)
-```
-summary on training data set
-```{r, eval=FALSE}
-summary(pml_train)
-```
+# Modeling and prediction
 
-### Test data
-
-First Lines of test data set
-```{r, eval=FALSE}
-head(pml_test)
-```
-summary on test data set
-```{r, eval=FALSE}
-summary(pml_test)
-```
-
-# Modelling and prediction
+for the prediction we use a random forrest, since random forrest are very easy and very fast in produce an acceptable model for prediction.
 
 ## Feature enngineering
+
+As mentioned in the prior chapter we omit the first seven columns for the model in feature list.
 
 ```{r}
 feature_index <- colnames(pml_train)
@@ -59,9 +49,8 @@ feature_index <- feature_index[-c(1:7)]
 
 ## Cross validation split
 
-To find an optimal model, with the best performance both in Accuracy as well as minimizing Out of Sample Error, the full testing data is split randomly with a set seed with 80% of the data into the training sample and 20% of the data used as cross-validation. When the samples are created, they are sliced by column against the feature set so only the variables of interest are fed into the final model.
-
 For model validation, to measure up accuracy as well as keeping "Out of Sample Error" low, training data itself is split into a training and validation part. This separation is done with a fixed seed and 80% of the data for training and 20% for validation. The splitting is done per partition of the attribute "classe" to ensure availability of every all values in the training set.
+
 ```{r}
 set.seed(666)
 index_train <- createDataPartition(y=pml_train$classe, p=0.80, list=FALSE)
@@ -69,9 +58,11 @@ data_train <- pml_train[index_train,feature_index]
 data_xval <- pml_train[-index_train,feature_index]
 ```
 
-## MOdel training and cross validation
+## Model training
 
-```{r,warning=FALSE, results='hide'}
+Training or the rdanom forrest model.
+
+```{r,warning=FALSE, results='hide', message=FALSE}
 model<- train(classe ~ .,
                 data = data_train, 
                 method = 'rf', 
@@ -79,21 +70,33 @@ model<- train(classe ~ .,
                                          number = 4, 
                                          allowParallel = TRUE, 
                                          verboseIter = TRUE))
-pred <- predict(model,data_xval)
-cm_rf <- confusionMatrix(pred,data_xval$classe)
 ```
 
 ## Variable Importance
+
+A short overview over the influence of the single attributes to the model.
 
 ```{r}
 print(plot(varImp(model, scale = FALSE)))
 ```
 
-```{r}
-cm_rf
-```
+## Cross check of model performance
 
-## Prediction 
+We apply the model to the separated training data to cross check the model quality.
+
+```{r}
+pred <- predict(model,data_xval)
+
+results <- confusionMatrix(pred,data_xval$classe)
+
+results
+```
+The accuracy of the model is 0.9941. The out of sample error is 0.0059. The out of sample error is calculated as 1 - accuracy for predictions made against the cross-validation set. 
+Considering the sample size of the test set with 20 entries, an accuracy rate well above 99% is good enough to expect that none or at least only very few entries of the test samples will be mis-classified.
+
+## Prediction
+
+After successful cross checking our model we apply it to the real test data set where the attribute "classe" is not avaiable. In the test set there are 20 cases which need to be classified.
 
 ```{r}
 final_col <- length(colnames(pml_test[]))
@@ -101,6 +104,5 @@ colnames(pml_test)[final_col] <- 'classe'
 submission <- predict(model,pml_test[,feature_index])
 submission
 ```
-
 
 
